@@ -66,12 +66,15 @@ get(CacheName, LifeTime, Key, FunResult) ->
   case ets:lookup(RealName, Key) of
     [] ->
       % Not found, create it.
-      V = FunResult(),
-      ets:insert(RealName, {Key, V}),
-      erlang:send_after(
-        LifeTime, simple_cache_expirer, {expire, CacheName, Key}
-      ),
-      V;
+      case FunResult() of
+        {cache, V} ->
+          ets:insert(RealName, {Key, V}),
+          erlang:send_after(
+            LifeTime, simple_cache_expirer, {expire, CacheName, Key}
+          ),
+          V;
+        {nocache, V} -> V
+      end;  
     [{Key, R}] -> R % Found, return the value.
   end.
 
