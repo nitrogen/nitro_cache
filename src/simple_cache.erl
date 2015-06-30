@@ -32,7 +32,8 @@
 %%% Public API.
 -export([init/1]).
 -export([get/4]).
--export([flush/1, flush/2]).
+-export([set/4]).
+-export([flush/1, flush/2, flush/3]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Public API.
@@ -58,6 +59,15 @@ flush(CacheName) ->
   RealName = ?NAME(CacheName),
   true = ets:delete_all_objects(RealName).
 
+%% @doc Deletes a key from cache only if it still has the expected Expiry
+%% value.  This is used by the expirer when a key is due to expire.  This
+%% avoids inadvertently deleting a value that has since been updated (it
+%% would thus have a different Expiry).
+-spec flush(atom(), term(), pos_integer()) -> true.
+flush(CacheName, Key, Expiry) ->
+  RealName = ?NAME(CacheName),
+  ets:match_delete(RealName, {Key, '_', Expiry}).
+
 %% @doc Tries to lookup Key in the cache, and execute the given FunResult
 %% on a miss.
 -spec get(atom(), infinity|pos_integer(), term(), function()) -> term().
@@ -66,15 +76,31 @@ get(CacheName, LifeTime, Key, FunResult) ->
   case ets:lookup(RealName, Key) of
     [] ->
       % Not found, create it.
-      case FunResult() of
-        {cache, V} ->
-          ets:insert(RealName, {Key, V}),
-          erlang:send_after(
-            LifeTime, simple_cache_expirer, {expire, CacheName, Key}
-          ),
-          V;
-        {nocache, V} -> V
-      end;  
-    [{Key, R}] -> R % Found, return the value.
+      V = FunResult(),
+      set(CacheName, LifeTime, Key, V),
+      V;
+    [{Key, R, _Expiry}] -> R % Found, return the value.
   end.
 
+%% @doc Sets Key in the cache to the given Value
+-spec set(atom(), infinity|pos_integer(), term(), term()) -> ok.
+set(CacheName, LifeTime, Key, Value) ->
+  RealName = ?NAME(CacheName),
+  %% Store the expiry time on the entry itself so that the expirer won't
+  %% accidentally expire the entry early if it gets updated between now
+  %% and when the expiration is first scheduled to occur.
+  case LifeTime of
+    infinity ->
+      ets:insert(RealName, {Key, Value, infinity});
+    _ ->
+      Expiry = now_millis() + LifeTime,
+      ets:insert(RealName, {Key, Value, Expiry}),
+      erlang:send_after(
+        LifeTime, simple_cache_expirer, {expire, CacheName, Key, Expiry}
+       )
+  end,
+  ok.
+
+now_millis() ->
+    {Mega, Seconds, Micro} = os:timestamp(),
+    (Mega * 1000000 + Seconds) * 1000 + trunc(Micro/1000).
