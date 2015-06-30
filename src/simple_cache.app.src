@@ -3,5 +3,6 @@
   {vsn, "0.2"},
   {registered, []},
   {applications, [kernel, stdlib]},
-  {env, []}
+  {env, []},
+  {mod, {simple_cache_app, []}}
  ]}.
