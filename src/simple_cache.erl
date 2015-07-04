@@ -31,6 +31,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Public API.
 -export([init/1]).
+-export([cache_exists/1]).
 -export([get/4]).
 -export([set/4]).
 -export([flush/1, flush/2, flush/3]).
@@ -46,6 +47,11 @@ init(CacheName) ->
     named_table, {read_concurrency, true}, public, {write_concurrency, true}
   ]),
   ok.
+
+-spec cache_exists(atom()) -> boolean().
+cache_exists(CacheName) ->
+	RealName = ?NAME(CacheName),
+	lists:member(RealName, ets:all()).
 
 %% @doc Deletes the keys that match the given ets:matchspec() from the cache.
 -spec flush(atom(), term()) -> true.
