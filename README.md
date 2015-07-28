@@ -1,11 +1,9 @@
 # Introduction
 
-This is the source code for [this post](http://inaka.net/blog/2013/03/05/ETS-simple-cache/), a
-simple ETS based cache.
+This is a fork of [simple_cache](https://github.com/marcelog/simple_cache)
+modified specifically for the needs of integration with the [Nitrogen Web
+Framework](http://nitrogenproject.com).
 
-For the original version, see the [0.1 tag](https://github.com/marcelog/simple_cache/tree/0.1)
-
-# Using it
 
 The updated code now has a separate process to handle the expirations, which is
 a regular gen_server. To start it, just do:
@@ -34,3 +32,12 @@ a MISS will call the given **fun**, caching its result for **3600000** milliseco
 ## Flushing a key
 
     simple_cache:flush(my_cache_name, my_key).
+
+# Differences:
+
+Some of the notable modifications from the original version:
+
++ Requesting a key from a bucket if it has not yet been initialized will
+  automatically instantiate that bucket.
++ Added a `cache_exists/1` function.
++ Added a `set/4' function.
