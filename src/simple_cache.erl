@@ -79,13 +79,21 @@ flush(CacheName, Key, Expiry) ->
 -spec get(atom(), infinity|pos_integer(), term(), function()) -> term().
 get(CacheName, LifeTime, Key, FunResult) ->
   RealName = ?NAME(CacheName),
-  case ets:lookup(RealName, Key) of
+  try ets:lookup(RealName, Key) of
     [] ->
       % Not found, create it.
       V = FunResult(),
       set(CacheName, LifeTime, Key, V),
       V;
     [{Key, R, _Expiry}] -> R % Found, return the value.
+  catch
+    error:badarg ->
+      case cache_exists(CacheName) of
+        true -> erlang:error(badarg);
+        false ->
+          init(CacheName),
+          get(CacheName, LifeTime, Key, FunResult)
+      end
   end.
 
 %% @doc Sets Key in the cache to the given Value
