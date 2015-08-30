@@ -46,6 +46,8 @@ init(CacheName) ->
   RealName = ets:new(RealName, [
     named_table, {read_concurrency, true}, public, {write_concurrency, true}
   ]),
+  %% A little nasty. Make it start directly on the expirer
+  ets:give_away(RealName, erlang:whereis(simple_cache_expirer), undefined),
   ok.
 
 -spec cache_exists(atom()) -> boolean().
@@ -103,6 +105,7 @@ set(CacheName, LifeTime, Key, Value) ->
   %% Store the expiry time on the entry itself so that the expirer won't
   %% accidentally expire the entry early if it gets updated between now
   %% and when the expiration is first scheduled to occur.
+  %io:format("Settings ~p => ~p~n",[Key, Value]),
   case LifeTime of
     infinity ->
       ets:insert(RealName, {Key, Value, infinity});
