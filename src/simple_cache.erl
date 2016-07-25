@@ -33,6 +33,7 @@
 -export([init/1]).
 -export([cache_exists/1]).
 -export([get/4]).
+-export([get_only/2]).
 -export([set/4]).
 -export([flush/1, flush/2, flush/3]).
 
@@ -96,6 +97,18 @@ get(CacheName, LifeTime, Key, FunResult) ->
           init(CacheName),
           get(CacheName, LifeTime, Key, FunResult)
       end
+  end.
+
+%% @doc Tries to lookup Key in the cache, and execute the given FunResult
+%% on a miss.
+-spec get_only(atom(), term()) -> undefined|term().
+get_only(CacheName, Key) ->
+  RealName = ?NAME(CacheName),
+  try ets:lookup(RealName, Key) of
+    [] -> undefined;
+    [{Key, R, _Expiry}] -> R % Found, return the value.
+  catch
+    error:badarg -> undefined
   end.
 
 %% @doc Sets Key in the cache to the given Value
