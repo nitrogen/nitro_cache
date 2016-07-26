@@ -77,17 +77,39 @@ flush(CacheName, Key, Expiry) ->
   RealName = ?NAME(CacheName),
   ets:match_delete(RealName, {Key, '_', Expiry}).
 
-%% @doc Tries to lookup Key in the cache, and execute the given FunResult
+%% @dor Tries to lookup Key in the cache, and execute the given FunResult
 %% on a miss.
 -spec get(atom(), infinity|pos_integer(), term(), function()) -> term().
 get(CacheName, LifeTime, Key, FunResult) ->
+    get(CacheName, LifeTime, Key, FunResult, 0).
+
+get(CacheName, LifeTime, Key, FunResult, 50) ->
+    throw({simple_cache_failed, CacheName, LifeTime, Key, FunResult});
+
+get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
   RealName = ?NAME(CacheName),
   try ets:lookup(RealName, Key) of
     [] ->
       % Not found, create it.
-      V = FunResult(),
-      set(CacheName, LifeTime, Key, V),
-      V;
+      SettingKey = {setting_cache_key, Key},
+      case ets:lookup(RealName, SettingKey) of
+         [] -> 
+             ets:insert(RealName, {SettingKey, true}),
+             try
+                V = FunResult(),
+                set(CacheName, LifeTime, Key, V),
+                ets:delete(RealName, SettingKey),
+                V
+             catch
+                Error:Type ->
+                    ets:delete(RealName, SettingKey),
+                    exit({Error, Type, erlang:get_stacktrace()})
+             end;
+         [{SettingKey, true}] ->
+             %io:format("~p being processed. Sleeping~n", [SettingKey]),
+             timer:sleep(100),
+             get(CacheName, LifeTime, Key, FunResult, TimesChecked+1)
+       end;
     [{Key, R, _Expiry}] -> R % Found, return the value.
   catch
     error:badarg ->
