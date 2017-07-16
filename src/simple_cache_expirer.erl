@@ -71,7 +71,7 @@ handle_info(_Info, State) ->
   term(), {pid(), reference()}, state()
 ) -> {reply, term() | {invalid_request, term()}, state()}.
 handle_call(Req, _From, State) ->
-  lager:error("Invalid request: ~p", [Req]),
+  %lager:error("Invalid request: ~p", [Req]),
   {reply, {invalid_request, Req}, State}.
 
 -spec terminate(atom(), state()) -> ok.

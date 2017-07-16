@@ -1,3 +1,5 @@
+.PHONY: test
+
 CWD=$(shell pwd)
 NAME=$(shell basename ${CWD})
 CT_LOG=${APP_DIR}/logs
@@ -20,6 +22,9 @@ getdeps:
 # Compiles.
 compile:
 	@${REBAR} compile
+
+test:
+	./rebar -v --config "rebar.test.config" skip_deps=true ct
 
 # This one runs without a release.
 shell: compile

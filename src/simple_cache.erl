@@ -44,12 +44,26 @@
 -spec init(atom()) -> ok.
 init(CacheName) ->
   RealName = ?NAME(CacheName),
-  RealName = ets:new(RealName, [
-    named_table, {read_concurrency, true}, public, {write_concurrency, true}
-  ]),
-  %% A little nasty. Make it start directly on the expirer
-  ets:give_away(RealName, erlang:whereis(simple_cache_expirer), undefined),
-  ok.
+  Config = [
+    named_table,
+    {read_concurrency, true},
+    public,
+    {write_concurrency, true}
+  ],
+  try ets:new(RealName, Config) of
+    RealName -> 
+      %% A little nasty. Make it start directly on the expirer
+      ets:give_away(RealName, erlang:whereis(simple_cache_expirer), undefined),
+      ok
+  catch error:badarg ->
+    %% Table might have been created already. Let's check if it exists.
+    case cache_exists(CacheName) of
+      true -> ok;
+      false ->
+        error_logger:error_msg("Failed to initialize a new Cache called ~p. Attempted to create it, received an error, checked to see if it was already created, and it wasn't already created. So something is awry.",[CacheName]),
+        throw({failed_to_init_cache, CacheName})
+    end
+  end.
 
 -spec cache_exists(atom()) -> boolean().
 cache_exists(CacheName) ->
@@ -75,7 +89,11 @@ flush(CacheName) ->
 -spec flush(atom(), term(), pos_integer()) -> true.
 flush(CacheName, Key, Expiry) ->
   RealName = ?NAME(CacheName),
-  ets:match_delete(RealName, {Key, '_', Expiry}).
+  try ets:match_delete(RealName, {Key, '_', Expiry})
+  catch error:badarg ->
+    error_logger:warning_msg("Trying to Expire ~p with Expiry ~p from ~p failed. Maybe the ETS table was deleted.",[Key, Expiry, RealName]),
+    true
+  end.
 
 %% @dor Tries to lookup Key in the cache, and execute the given FunResult
 %% on a miss.
@@ -114,7 +132,9 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
   catch
     error:badarg ->
       case cache_exists(CacheName) of
-        true -> erlang:error(badarg);
+        true ->
+            %% It's possible the cache was initialized between first doing the lookup and here. So let's just try again
+            get(CacheName, LifeTime, Key, FunResult, TimesChecked-1);
         false ->
           init(CacheName),
           get(CacheName, LifeTime, Key, FunResult)
