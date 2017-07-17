@@ -93,25 +93,16 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
   RealName = ?NAME(CacheName),
   try ets:lookup(RealName, Key) of
     [] ->
-      % Not found, create it.
-      SettingKey = {setting_cache_key, Key},
-      case ets:lookup(RealName, SettingKey) of
-         [] -> 
-             ets:insert(RealName, {SettingKey, true}),
-             try
-                V = FunResult(),
-                set(CacheName, LifeTime, Key, V),
-                ets:delete(RealName, SettingKey),
-                V
-             catch
-                Error:Type ->
-                    ets:delete(RealName, SettingKey),
-                    exit({Error, Type, erlang:get_stacktrace()})
-             end;
-         [{SettingKey, true}] ->
-             %io:format("~p being processed. Sleeping~n", [SettingKey]),
-             timer:sleep(100),
-             get(CacheName, LifeTime, Key, FunResult, TimesChecked+1)
+      MutexName = {CacheName, Key},
+      case simple_cache_mutex:lock(MutexName) of
+          success ->
+              V = FunResult(),
+              set(CacheName, LifeTime, Key, V),
+              simple_cache_mutex:free(MutexName),
+              V;
+          fail ->
+              timer:sleep(100),
+              get(CacheName, LifeTime, Key, FunResult, TimesChecked+1)
        end;
     [{Key, R, _Expiry}] -> R % Found, return the value.
   catch
@@ -119,7 +110,7 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
       case cache_exists(CacheName) of
         true ->
             %% It's possible the cache was initialized between first doing the lookup and here. So let's just try again
-            get(CacheName, LifeTime, Key, FunResult, TimesChecked-1);
+            get(CacheName, LifeTime, Key, FunResult, TimesChecked+1);
         false ->
           init(CacheName),
           get(CacheName, LifeTime, Key, FunResult)

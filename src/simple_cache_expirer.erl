@@ -85,8 +85,12 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
-
 new(CacheName) ->
+    new(CacheName, 20).
+
+new(CacheName, 0) ->
+    {error, {fail_to_init_cache, CacheName}};
+new(CacheName, TriesRemaining) ->
   RealName = ?NAME(CacheName),
   Config = [
     named_table,
@@ -96,8 +100,17 @@ new(CacheName) ->
   ],
   try ets:new(RealName, Config) of
     _RealName ->
-       %% A little nasty. Make it start directly on the expirer
        ok
-   catch E:T ->
-     {error, {E, T, erlang:get_stacktrace()}}
+   catch
+     error:badarg ->
+       case lists:member(RealName, ets:all()) of
+         true ->
+           error_logger:info_msg("Trying to create ETS table (~p) that already exists.",[RealName]);
+         false ->
+           error_logger:warning_msg("badarg when trying to init Cache: ~p. ~p attempts remaining",[CacheName, TriesRemaining]),
+           timer:sleep(100),
+           new(CacheName, TriesRemaining-1)
+       end;
+     E:T ->
+         {error, {E, T, erlang:get_stacktrace()}}
    end.
