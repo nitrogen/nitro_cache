@@ -105,7 +105,13 @@ new(CacheName, TriesRemaining) ->
      error:badarg ->
        case lists:member(RealName, ets:all()) of
          true ->
-           error_logger:info_msg("Trying to create ETS table (~p) that already exists.",[RealName]);
+           Owner = proplists:get_value(owner, ets:info(RealName)),
+           case Owner == self() of
+             true ->
+               error_logger:info_msg("Trying to create ETS table (~p) that already exists, but we are already the owner, so that's okay.",[RealName]);
+             false ->
+               error_logger:error_msg("Trying to create an ETS table (~p) that exists, and we aren't the owner. We are ~p and the owner is ~p. Time to crash.",[RealName, self(), Owner])
+            end;
          false ->
            error_logger:warning_msg("badarg when trying to init Cache: ~p. ~p attempts remaining",[CacheName, TriesRemaining]),
            timer:sleep(100),
