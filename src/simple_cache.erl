@@ -19,12 +19,12 @@
 %%%
 -module(simple_cache).
 -author('marcelog@gmail.com').
+-include("simple_cache.hrl").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Types.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--define(ETS_TID, atom_to_list(?MODULE)).
--define(NAME(N), list_to_atom(?ETS_TID ++ "_" ++ atom_to_list(N))).
+-define(ETS_TID, "simple_cache_").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Exports.
@@ -43,26 +43,11 @@
 %% @doc Initializes a cache.
 -spec init(atom()) -> ok.
 init(CacheName) ->
-  RealName = ?NAME(CacheName),
-  Config = [
-    named_table,
-    {read_concurrency, true},
-    public,
-    {write_concurrency, true}
-  ],
-  try ets:new(RealName, Config) of
-    RealName -> 
-      %% A little nasty. Make it start directly on the expirer
-      ets:give_away(RealName, erlang:whereis(simple_cache_expirer), undefined),
-      ok
-  catch error:badarg ->
-    %% Table might have been created already. Let's check if it exists.
-    case cache_exists(CacheName) of
-      true -> ok;
-      false ->
-        error_logger:error_msg("Failed to initialize a new Cache called ~p. Attempted to create it, received an error, checked to see if it was already created, and it wasn't already created. So something is awry.",[CacheName]),
-        throw({failed_to_init_cache, CacheName})
-    end
+  case gen_server:call(simple_cache_expirer, {new, CacheName}) of
+    ok -> ok;
+    {error, Error} ->
+      error_logger:error_msg("Failed to initialize a new cache.~nName: ~p.~nError Message: ~p",[CacheName, Error]),
+      throw({failed_to_init_cache, CacheName})
   end.
 
 -spec cache_exists(atom()) -> boolean().

@@ -19,7 +19,7 @@
 %%%
 -module(simple_cache_expirer).
 -author('marcelog@gmail.com').
-
+-include("simple_cache.hrl").
 -behavior(gen_server).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -70,6 +70,9 @@ handle_info(_Info, State) ->
 -spec handle_call(
   term(), {pid(), reference()}, state()
 ) -> {reply, term() | {invalid_request, term()}, state()}.
+handle_call({new, CacheName}, _From, State) ->
+    Reply = new(CacheName),
+    {reply, Reply, State};
 handle_call(Req, _From, State) ->
   %lager:error("Invalid request: ~p", [Req]),
   {reply, {invalid_request, Req}, State}.
@@ -82,3 +85,19 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+
+new(CacheName) ->
+  RealName = ?NAME(CacheName),
+  Config = [
+    named_table,
+    {read_concurrency, true},
+    public,
+    {write_concurrency, true}
+  ],
+  try ets:new(RealName, Config) of
+    _RealName ->
+       %% A little nasty. Make it start directly on the expirer
+       ok
+   catch E:T ->
+     {error, {E, T, erlang:get_stacktrace()}}
+   end.

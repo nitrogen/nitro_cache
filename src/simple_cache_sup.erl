@@ -43,7 +43,10 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, {{one_for_one, 5, 10}, [?CHILD('simple_cache_expirer', 'simple_cache_expirer', worker, [])]}}.
+    {ok, {{one_for_one, 5, 10}, [
+        ?CHILD(simple_cache_mutex, simple_cache_mutex, worker, []),
+        ?CHILD(simple_cache_expirer, simple_cache_expirer, worker, [])
+    ]}}.
 
 %%%===================================================================
 %%% Internal functions
