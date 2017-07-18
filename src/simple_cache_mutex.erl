@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @author Jesse Gumm
 %%% @copyright (C) 2017, Jesse Gumm
-%%% @doc
+%%% @doc This is a mutex server for simple_cache. There are no pre-set mutexes. Simply requesting a mutex with lock/1 or lock/2 will either issue a mutex or return "fail" if the mutex is not free, or if you set a timeout, it will wait until it frees.
 %%%
 %%% @end
 %%% Created : 2017-07-16 18:11:59.402630
@@ -27,12 +27,14 @@
 -export([
     lock/2,
     lock/1,
-    free/1
+    free/1,
+    wait/1,
+    wait/2
 ]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {mutexes, waitlists}).
+-record(state, {mutexes, waitlists, notifylists}).
 -record(mutex, {key, pid, monitor}).
 
 
@@ -55,9 +57,9 @@ lock(Key, Timeout) ->
     case gen_server:call(?SERVER, {lock, CanBlock, Key, Pid}) of
         success -> success;
         fail -> fail;
-        queued ->
+        {queued, Ref} ->
             receive
-                lock_received -> success
+                {lock_received, Ref} -> success
             after Timeout ->
                 fail
             end
@@ -67,46 +69,36 @@ free(Key) ->
     Pid = self(),
     gen_server:call(?SERVER, {free, Key, Pid}).
 
+wait(Key) ->
+    wait(Key, infinity).
+
+wait(Key, Timeout) ->
+    Pid = self(),
+    case  gen_server:call(?SERVER, {wait, Key, Pid}) of
+        {waiting, Ref} ->
+            receive
+                {free, Ref} -> free
+            after
+                Timeout -> not_free
+            end;
+        free ->
+            free
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{mutexes=[], waitlists=dict:new()}}.
+    {ok, #state{mutexes=[], waitlists=dict:new(), notifylists=dict:new()}}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |;
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call({lock, CanBlock, Key, Pid}, _From, State=#state{mutexes=Mutexes}) ->
-    case lists:keymember(Key, #mutex.key, Mutexes) of
+handle_call({lock, CanBlock, Key, Pid}, _From, State) ->
+    case is_locked(Key, State) of
         true ->
             case CanBlock of
                 true ->
-                    NewState = add_waitlist(Key, Pid, State),
-                    {reply, queued, NewState};
+                    {Ref, NewState} = add_waitlist(Key, Pid, State),
+                    {reply, {queued, Ref}, NewState};
                 false ->
                     {reply, fail, State}
             end;
@@ -117,67 +109,41 @@ handle_call({lock, CanBlock, Key, Pid}, _From, State=#state{mutexes=Mutexes}) ->
 handle_call({free, Key, Pid}, _From, State=#state{}) ->
     {Reply, NewState} = do_free(Key, Pid, State),
     NewState2 = issue_and_notify_waitlist_lock(Key, NewState),
-    {reply, Reply, NewState2}.
+    NewState3 = send_notify_lists(Key, NewState2),
+    {reply, Reply, NewState3};
 
+handle_call({wait, Key, Pid}, _From, State=#state{}) ->
+    case is_locked(Key, State) of
+        true ->
+            {Ref, NewState} = add_notify(Key, Pid, State),
+            {reply, {waiting, Ref}, NewState};
+        false ->
+            {reply, free, State}
+    end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
+is_locked(Key, #state{mutexes=Mutexes}) ->
+    lists:keymember(Key, #mutex.key, Mutexes).
+
 handle_cast(_Msg, State) ->
-        {noreply, State}.
+    {noreply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
 handle_info({'DOWN', MonRef, _, _, _}, State=#state{mutexes=Mutexes}) ->
     case lists:keyfind(MonRef, #mutex.monitor, Mutexes) of
         #mutex{key=Key} ->
             NewMutexes = lists:keydelete(MonRef, #mutex.monitor, Mutexes),
             NewState = State#state{mutexes=NewMutexes},
             NewState2 = issue_and_notify_waitlist_lock(Key, NewState),
-            {noreply, NewState2};
+            NewState3 = send_notify_lists(Key, NewState2),
+            {noreply, NewState3};
         false ->
             {noreply, State}
     end;
 handle_info(_Msg, State) ->
     {noreply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
         ok.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
         {   ok, State}.
 
@@ -226,9 +192,22 @@ add_waitlist(Key, Pid, State) ->
         error -> queue:new();
         {ok, W} -> W
     end,
-    NewWaitlist = queue:in({Key, Pid}, Waitlist),
+    Ref = erlang:make_ref(),
+    NewWaitlist = queue:in({Key, Pid, Ref}, Waitlist),
     NewWaitlists = dict:store(Key, NewWaitlist, Waitlists),
-    State#state{waitlists=NewWaitlists}.
+    {Ref, State#state{waitlists=NewWaitlists}}.
+
+
+add_notify(Key, Pid, State) ->
+    Notifylists = State#state.notifylists,
+    Notifylist = case dict:find(Key, Notifylists) of
+        error -> [];
+        {ok, N} -> N
+    end,
+    Ref = make_ref(),
+    NewNotifylist = [{Pid, Ref} | Notifylist],
+    NewNotifylists = dict:store(Key, NewNotifylist, Notifylists),
+    {Ref, State#state{notifylists=NewNotifylists}}.
 
 get_queued_lock(Key, State = #state{waitlists=Waitlists}) ->
     case dict:find(Key, Waitlists) of
@@ -236,26 +215,36 @@ get_queued_lock(Key, State = #state{waitlists=Waitlists}) ->
             none;
         {ok, Waitlist} ->
             case queue:out(Waitlist) of
-                {{value, {Key, Pid}}, NewWaitlist} -> 
+                {{value, {Key, Pid, Ref}}, NewWaitlist} -> 
                     NewWaitlists = dict:store(Key, NewWaitlist, Waitlists),
                     NewState = State#state{waitlists=NewWaitlists},
-                    {Pid, NewState};
+                    {Pid, Ref, NewState};
                 {empty, _} ->
                     none
             end
     end.
     
-
-
 issue_and_notify_waitlist_lock(Key, State) ->
     case get_queued_lock(Key, State) of
         none -> State;
-        {Pid, DequeuedState} ->
+        {Pid, Ref, DequeuedState} ->
             case do_lock(Key, Pid, DequeuedState) of
                 {fail, NewState} ->
                     issue_and_notify_waitlist_lock(Key, NewState);
                 {success, NewState} ->
-                    Pid ! lock_received,
+                    Pid ! {lock_received, Ref},
                     NewState
             end
+    end.
+
+send_notify_lists(Key, State = #state{notifylists=Notifylists}) ->
+    case dict:find(Key, Notifylists) of
+        error ->
+            State;
+        {ok, Notifylist} ->
+            lists:foreach(fun({Pid, Ref}) ->
+                Pid ! {free, Ref}
+            end, Notifylist),
+            NewNotifylists = dict:erase(Key, Notifylists),
+            State#state{notifylists=NewNotifylists}
     end.

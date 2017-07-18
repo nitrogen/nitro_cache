@@ -86,7 +86,7 @@ flush(CacheName, Key, Expiry) ->
 get(CacheName, LifeTime, Key, FunResult) ->
     get(CacheName, LifeTime, Key, FunResult, 0).
 
-get(CacheName, LifeTime, Key, FunResult, 50) ->
+get(CacheName, LifeTime, Key, FunResult, 10) ->
     throw({simple_cache_failed, CacheName, LifeTime, Key, FunResult});
 
 get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
@@ -101,7 +101,13 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
               simple_cache_mutex:free(MutexName),
               V;
           fail ->
-              timer:sleep(100),
+              %% Since the mutex is not available, let's wait until it frees up, then try again.
+              case simple_cache_mutex:wait(MutexName, 10000) of
+                free ->
+                    ok;
+                not_free ->
+                    error_logger:warning_msg("SimpleCache: Mutex \"~p\" timed out after 10 seconds. Something might be wrong. Trying again.", [MutexName])
+              end,
               get(CacheName, LifeTime, Key, FunResult, TimesChecked+1)
        end;
     [{Key, R, _Expiry}] -> R % Found, return the value.
