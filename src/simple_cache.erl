@@ -37,6 +37,8 @@
 -export([set/4]).
 -export([flush/1, flush/2, flush/3]).
 
+-export([benchmark/1]).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Public API.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -158,3 +160,56 @@ set(CacheName, LifeTime, Key, Value) ->
 now_millis() ->
     {Mega, Seconds, Micro} = os:timestamp(),
     (Mega * 1000000 + Seconds) * 1000 + trunc(Micro/1000).
+
+
+benchmark(NumKeys) ->
+    GenFun = fun() -> timer:sleep(1000), ok end,
+    io:format("Starting Simple Cache ~n"),
+    application:start(simple_cache),
+    io:format("Generating ~p Keys~n", [NumKeys]),
+    Keys = lists:seq(1, NumKeys),
+    RequestTimes = lists:seq(1, 1000),
+    io:format("Generating ~p values with a 1000ms delay. Then immediately requesting each 10000 times in parallel~n", [NumKeys]),
+    ListOfGetTimes = pmap(fun(K) ->
+        erlang:spawn(fun() ->
+            simple_cache:get(benchmark, 60000, K, GenFun)
+        end),
+        WrongFun = fun() -> K end,
+        {_GetTime, _Returns} = timer:tc(fun() ->
+            pmap(fun(_) ->
+                simple_cache:get(benchmark, 0, K, WrongFun) %% WrongFun should never be run unless it takes too long to process.
+            end, RequestTimes)
+        end)
+    end, Keys),
+    GetTimes = [GT || {GT, _} <- ListOfGetTimes],
+    Returns = lists:flatten([R || {_, R} <- ListOfGetTimes]),
+    NotOK = [X || X <- Returns, X =/= ok],
+    case NotOK of
+        [] ->
+            io:format("There were ~p items that failed to return the expected value 'ok'~n",[length(NotOK)]);
+        _ ->
+            io:format("All items returned the expected value~n")
+    end,
+    AvgWorkTime = lists:sum(GetTimes) div length(GetTimes),
+    io:format("Total Work Time was ~p microseconds~n per key~n", [AvgWorkTime]).
+
+
+%Joe Armstrong's pmap implementation
+%pmap is a parallel map
+pmap(F, L) ->
+    S = self(),
+    Pids = lists:map(fun(I) ->
+        spawn(fun() -> do_f(S, F, I) end)
+    end, L),
+    gather(Pids).
+
+gather([H|T]) ->
+     receive
+         {H, Ret} -> [Ret|gather(T)]
+     end;
+ gather([]) ->
+     [].
+
+ do_f(Parent, F, I) ->
+     Parent ! {self(), (catch F(I))}.
+

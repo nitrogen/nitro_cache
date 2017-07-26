@@ -26,6 +26,9 @@ compile:
 test:
 	./rebar -v --config "rebar.test.config" skip_deps=true ct
 
+benchmark:
+	${ERL} ${ERLARGS} +P 60000000 -eval "application:start(simple_cache)" -eval "simple_cache:benchmark(1000)"
+
 # This one runs without a release.
 shell: compile
 	${ERL} ${ERLARGS}
