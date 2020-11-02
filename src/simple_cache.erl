@@ -91,6 +91,11 @@ get(CacheName, LifeTime, Key, FunResult) ->
 get(CacheName, LifeTime, Key, FunResult, 10) ->
     throw({simple_cache_failed, CacheName, LifeTime, Key, FunResult});
 
+get(CacheName, LifeTime, Key, FunResult, TimesChecked) when LifeTime =< 0 ->
+  case get_only(CacheName, Key) of
+    undefined -> FunResult();
+    V -> V
+  end;
 get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
   RealName = ?NAME(CacheName),
   try ets:lookup(RealName, Key) of
@@ -168,8 +173,9 @@ benchmark(NumKeys) ->
     application:start(simple_cache),
     io:format("Generating ~p Keys~n", [NumKeys]),
     Keys = lists:seq(1, NumKeys),
-    RequestTimes = lists:seq(1, 1000),
-    io:format("Generating ~p values with a 1000ms delay. Then immediately requesting each 10000 times in parallel~n", [NumKeys]),
+    MaxRequestTimes = 1000,
+    RequestTimes = lists:seq(1, MaxRequestTimes),
+    io:format("Generating ~p values with a 1000ms delay. Then immediately requesting each 1000 times in parallel~n", [NumKeys]),
     ListOfGetTimes = pmap(fun(K) ->
         erlang:spawn(fun() ->
             simple_cache:get(benchmark, 60000, K, GenFun)
@@ -190,8 +196,9 @@ benchmark(NumKeys) ->
         _ ->
             io:format("All items returned the expected value~n")
     end,
-    AvgWorkTime = lists:sum(GetTimes) div length(GetTimes),
-    io:format("Total Work Time was ~p microseconds~n per key~n", [AvgWorkTime]).
+    AvgWorkTime = lists:sum(GetTimes) / (length(GetTimes) * MaxRequestTimes),
+    
+    io:format("Total Work Time was ~p microseconds per request", [AvgWorkTime]).
 
 
 %Joe Armstrong's pmap implementation
