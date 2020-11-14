@@ -17,9 +17,9 @@
 %%% @copyright Marcelo Gornstein <marcelog@gmail.com>
 %%% @author Marcelo Gornstein <marcelog@gmail.com>
 %%%
--module(simple_cache_expirer).
+-module(nitro_cache_expirer).
 -author('marcelog@gmail.com').
--include("simple_cache.hrl").
+-include("nitro_cache.hrl").
 -behavior(gen_server).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -61,7 +61,7 @@ handle_cast(_Msg, State) ->
 
 -spec handle_info(any(), state()) -> {noreply, state()}.
 handle_info({expire, CacheName, Key, Expiry}, State) ->
-  simple_cache:flush(CacheName, Key, Expiry),
+  nitro_cache:flush(CacheName, Key, Expiry),
   {noreply, State};
 
 handle_info(_Info, State) ->

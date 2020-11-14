@@ -1,0 +1,1 @@
+-define(NAME(Name), list_to_atom("nitro_cache_" ++ atom_to_list(Name))).

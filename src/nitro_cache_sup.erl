@@ -1,4 +1,4 @@
--module(simple_cache_sup).
+-module(nitro_cache_sup).
 
 -behaviour(supervisor).
 
@@ -44,8 +44,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, {{one_for_one, 5, 10}, [
-        ?CHILD(simple_cache_mutex, simple_cache_mutex, worker, []),
-        ?CHILD(simple_cache_expirer, simple_cache_expirer, worker, [])
+        ?CHILD(nitro_cache_mutex, nitro_cache_mutex, worker, []),
+        ?CHILD(nitro_cache_expirer, nitro_cache_expirer, worker, [])
     ]}}.
 
 %%%===================================================================

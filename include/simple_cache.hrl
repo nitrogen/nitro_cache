@@ -1,1 +1,0 @@
--define(NAME(Name), list_to_atom("simple_cache_" ++ atom_to_list(Name))).

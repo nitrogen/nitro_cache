@@ -1,4 +1,4 @@
-%%% @doc Main module for simple_cache.
+%%% @doc Main module for nitro_cache.
 %%%
 %%% Copyright 2013 Marcelo Gornstein &lt;marcelog@@gmail.com&gt;
 %%%
@@ -17,14 +17,14 @@
 %%% @copyright Marcelo Gornstein <marcelog@gmail.com>
 %%% @author Marcelo Gornstein <marcelog@gmail.com>
 %%%
--module(simple_cache).
+-module(nitro_cache).
 -author('marcelog@gmail.com').
--include("simple_cache.hrl").
+-include("nitro_cache.hrl").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Types.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--define(ETS_TID, "simple_cache_").
+-define(ETS_TID, "nitro_cache_").
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Exports.
@@ -45,7 +45,7 @@
 %% @doc Initializes a cache.
 -spec init(atom()) -> ok.
 init(CacheName) ->
-  case gen_server:call(simple_cache_expirer, {new, CacheName}) of
+  case gen_server:call(nitro_cache_expirer, {new, CacheName}) of
     ok -> ok;
     {error, Error} ->
       error_logger:error_msg("Failed to initialize a new cache.~nName: ~p.~nError Message: ~p",[CacheName, Error]),
@@ -89,7 +89,7 @@ get(CacheName, LifeTime, Key, FunResult) ->
     get(CacheName, LifeTime, Key, FunResult, 0).
 
 get(CacheName, LifeTime, Key, FunResult, 10) ->
-    throw({simple_cache_failed, CacheName, LifeTime, Key, FunResult});
+    throw({nitro_cache_failed, CacheName, LifeTime, Key, FunResult});
 
 get(CacheName, LifeTime, Key, FunResult, _TimesChecked) when LifeTime =< 0 ->
   case get_only(CacheName, Key) of
@@ -101,15 +101,15 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
   try ets:lookup(RealName, Key) of
     [] ->
       MutexName = {CacheName, Key},
-      case simple_cache_mutex:lock(MutexName) of
+      case nitro_cache_mutex:lock(MutexName) of
           success ->
               V = FunResult(),
               set(CacheName, LifeTime, Key, V),
-              simple_cache_mutex:free(MutexName),
+              nitro_cache_mutex:free(MutexName),
               V;
           fail ->
               %% Since the mutex is not available, let's wait until it frees up, then try again.
-              case simple_cache_mutex:wait(MutexName, 10000) of
+              case nitro_cache_mutex:wait(MutexName, 10000) of
                 free ->
                     ok;
                 not_free ->
@@ -157,7 +157,7 @@ set(CacheName, LifeTime, Key, Value) ->
       Expiry = now_millis() + LifeTime,
       ets:insert(RealName, {Key, Value, Expiry}),
       erlang:send_after(
-        LifeTime, simple_cache_expirer, {expire, CacheName, Key, Expiry}
+        LifeTime, nitro_cache_expirer, {expire, CacheName, Key, Expiry}
        )
   end,
   ok.
@@ -170,7 +170,7 @@ now_millis() ->
 benchmark(NumKeys) ->
     GenFun = fun() -> timer:sleep(1000), ok end,
     io:format("Starting Simple Cache ~n"),
-    application:start(simple_cache),
+    application:start(nitro_cache),
     io:format("Generating ~p Keys~n", [NumKeys]),
     Keys = lists:seq(1, NumKeys),
     MaxRequestTimes = 1000,
@@ -178,12 +178,12 @@ benchmark(NumKeys) ->
     io:format("Generating ~p values with a 1000ms delay. Then immediately requesting each 1000 times in parallel~n", [NumKeys]),
     ListOfGetTimes = pmap(fun(K) ->
         erlang:spawn(fun() ->
-            simple_cache:get(benchmark, 60000, K, GenFun)
+            nitro_cache:get(benchmark, 60000, K, GenFun)
         end),
         WrongFun = fun() -> K end,
         {_GetTime, _Returns} = timer:tc(fun() ->
             pmap(fun(_) ->
-                simple_cache:get(benchmark, 0, K, WrongFun) %% WrongFun should never be run unless it takes too long to process.
+                nitro_cache:get(benchmark, 0, K, WrongFun) %% WrongFun should never be run unless it takes too long to process.
             end, RequestTimes)
         end)
     end, Keys),

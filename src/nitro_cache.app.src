@@ -1,0 +1,8 @@
+{application, nitro_cache, [
+  {description, "Small simple cache for Nitrogen"},
+  {vsn, "0.4.0"},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []},
+  {mod, {nitro_cache_app, []}}
+ ]}.

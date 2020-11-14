@@ -1,8 +1,0 @@
-{application, simple_cache, [
-  {description, "Small simple cache using ETS"},
-  {vsn, "0.2"},
-  {registered, []},
-  {applications, [kernel, stdlib]},
-  {env, []},
-  {mod, {simple_cache_app, []}}
- ]}.

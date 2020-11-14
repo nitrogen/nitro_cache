@@ -1,4 +1,4 @@
--module(simple_cache_SUITE).
+-module(nitro_cache_SUITE).
 -include_lib("common_test/include/ct.hrl").
 -export([
 	all/0,
@@ -31,7 +31,7 @@ config_to_num(Config) ->
 groups() ->
 	[
         {'1000', 
-		    [shuffle, sequence, parallel, {repeat, 50}],
+		    [shuffle, sequence, parallel, {repeat, 10}],
 		    [infinity_fast, infinity_slow, timed_fast, timed_slow, lots_of_keys]
 	    },
         {'100000', 
@@ -42,11 +42,11 @@ groups() ->
 
 init_per_group(Test, Config) ->
     Num = test_to_num(Test),
-	application:start(simple_cache),
+	application:start(nitro_cache),
 	[{num, Num} | Config].
 
 end_per_group(_Test, Config) ->
-	application:stop(simple_cache),
+	application:stop(nitro_cache),
 	Config.
 
 running_notice() ->
@@ -55,7 +55,7 @@ running_notice() ->
 infinity_fast(Config) ->
     Key = ?FUNCTION_NAME,
     Fun = fun() ->
-        ok = simple_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), ok end)
+        ok = nitro_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), ok end)
     end,
     run_times(Fun, config_to_num(Config), 1).
 
@@ -63,28 +63,28 @@ infinity_fast(Config) ->
 infinity_slow(Config) ->
     Key = ?FUNCTION_NAME,
     Fun = fun() ->
-        ok = simple_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), timer:sleep(1000), ok end)
+        ok = nitro_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), timer:sleep(1000), ok end)
     end,
     ok = run_times(Fun, config_to_num(Config), 1).
 
 timed_slow(Config) ->
     Key = ?FUNCTION_NAME,
     Fun = fun() ->
-        ok = simple_cache:get(?BUCKET, 10000, Key, fun() -> running_notice(), timer:sleep(1000), ok end)
+        ok = nitro_cache:get(?BUCKET, 10000, Key, fun() -> running_notice(), timer:sleep(1000), ok end)
     end,
     ok = run_times(Fun, config_to_num(Config), 1).
 
 timed_fast(Config) ->
     Key = ?FUNCTION_NAME,
     Fun = fun() ->
-        ok = simple_cache:get(?BUCKET, 1000, Key, fun() -> running_notice(), ok end)
+        ok = nitro_cache:get(?BUCKET, 1000, Key, fun() -> running_notice(), ok end)
     end,
     ok = run_times(Fun, config_to_num(Config), 1).
 
 lots_of_keys(Config) ->
     Fun = fun() ->
         Key = crypto:rand_uniform(1, 10000),
-        Key = simple_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), timer:sleep(1000), Key end)
+        Key = nitro_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), timer:sleep(1000), Key end)
     end,
     ok = run_times(Fun, config_to_num(Config), 1).
 

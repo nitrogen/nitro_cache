@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @author Jesse Gumm
 %%% @copyright (C) 2017, Jesse Gumm
-%%% @doc This is a mutex server for simple_cache. There are no pre-set mutexes. Simply requesting a mutex with lock/1 or lock/2 will either issue a mutex or return "fail" if the mutex is not free, or if you set a timeout, it will wait until it frees.
+%%% @doc This is a mutex server for nitro_cache. There are no pre-set mutexes. Simply requesting a mutex with lock/1 or lock/2 will either issue a mutex or return "fail" if the mutex is not free, or if you set a timeout, it will wait until it frees.
 %%%
 %%% @end
 %%% Created : 2017-07-16 18:11:59.402630
 %%%-------------------------------------------------------------------
--module(simple_cache_mutex).
+-module(nitro_cache_mutex).
 
 -behaviour(gen_server).
 
