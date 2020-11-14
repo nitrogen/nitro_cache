@@ -91,7 +91,7 @@ get(CacheName, LifeTime, Key, FunResult) ->
 get(CacheName, LifeTime, Key, FunResult, 10) ->
     throw({simple_cache_failed, CacheName, LifeTime, Key, FunResult});
 
-get(CacheName, LifeTime, Key, FunResult, TimesChecked) when LifeTime =< 0 ->
+get(CacheName, LifeTime, Key, FunResult, _TimesChecked) when LifeTime =< 0 ->
   case get_only(CacheName, Key) of
     undefined -> FunResult();
     V -> V
