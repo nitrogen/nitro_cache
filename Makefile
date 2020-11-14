@@ -9,7 +9,7 @@ ERL?=/usr/bin/env erl
 ERLARGS=-pa ebin -smp enable -name ${NODE} \
 	-setcookie ${COOKIE} -boot start_sasl
 
-all: clean compile
+all: clean getdeps compile
 
 # Clean all.
 clean:
