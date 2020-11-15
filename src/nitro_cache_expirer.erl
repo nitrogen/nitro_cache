@@ -117,6 +117,6 @@ new(CacheName, TriesRemaining) ->
            timer:sleep(100),
            new(CacheName, TriesRemaining-1)
        end;
-     E:T ->
-         {error, {E, T, erlang:get_stacktrace()}}
+      E:T:S ->
+         {error, {E, T, S}}
    end.

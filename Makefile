@@ -9,14 +9,14 @@ ERL?=/usr/bin/env erl
 ERLARGS=-pa ebin -smp enable -name ${NODE} \
 	-setcookie ${COOKIE} -boot start_sasl
 
-all: clean getdeps compile
+all: clean get-deps compile
 
 # Clean all.
 clean:
 	@${REBAR} clean
 
 # Gets dependencies.
-getdeps:
+get-deps:
 	@${REBAR} get-deps
 
 # Compiles.
@@ -42,7 +42,7 @@ dialyzer: compile
 travis: test dialyzer
 
 publish:
-	$(REBAR) as pkg upgrade
-	$(REBAR) as pkg hex publish
+	$(REBAR) upgrade
+	$(REBAR) hex publish
 	$(REBAR) upgrade
 
