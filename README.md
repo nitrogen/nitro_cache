@@ -18,7 +18,7 @@ a regular `gen_server`. To start it, just do:
 
 ## Getting a key
 
-The following call will lookup **my\_key** in the cache named **my\_cache\_name**, and on
+The following call will lookup **my_key** in the cache named **my_cache_name**, and on
 a MISS will call the given **fun**, caching its result for **3600000** milliseconds.
 
     nitro_cache:get(my_cache_name, 3600000, my_key, fun() ->
