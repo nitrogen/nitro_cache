@@ -33,3 +33,4 @@ benchmark:
 shell: compile
 	${ERL} ${ERLARGS}
 
+travis: test
