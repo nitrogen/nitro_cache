@@ -1,8 +1,6 @@
 # NitroCache
 
-NitroCache
-
-This is a fork of [simple_cache](https://github.com/marcelog/simple_cache)
+NitroCache is a fork of [simple_cache](https://github.com/marcelog/simple_cache)
 modified specifically for the needs of integration with the [Nitrogen Web
 Framework](http://nitrogenproject.com).
 
@@ -35,11 +33,23 @@ a MISS will call the given **fun**, caching its result for **3600000** milliseco
 
     nitro_cache:flush(my_cache_name, my_key).
 
-# Differences:
+## Changes:
 
-Some of the notable modifications from the original version:
+### Version 0.4.0
 
++ Renamed to NitroCache to avoid a name clash (simple_cache is already taken
+  on hex.pm)
 + Requesting a key from a bucket if it has not yet been initialized will
   automatically instantiate that bucket.
++ NitroCache introduced a mutex system to prevent recalculating the same
+  slow-calculating key when multiple requests come in at same time.  When the
+  key's value is calculated, it will return the result to all the waiting
+  requests.
 + Added a `cache_exists/1` function.
-+ Added a `set/4' function.
++ Added a `set/4` function.
++ Converted to rebar3
+
+### Version =< 0.3
+
+These earlier versions are the simple_cache versions.
+
