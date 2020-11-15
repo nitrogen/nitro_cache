@@ -3,7 +3,7 @@
 CWD=$(shell pwd)
 NAME=$(shell basename ${CWD})
 CT_LOG=${APP_DIR}/logs
-REBAR?=${CWD}/rebar
+REBAR?=${CWD}/rebar3
 COOKIE?=cookie_${NAME}
 ERL?=/usr/bin/env erl
 ERLARGS=-pa ebin -smp enable -name ${NODE} \
@@ -23,8 +23,11 @@ getdeps:
 compile:
 	@${REBAR} compile
 
+run:
+	$(REBAR) shell --apps nitro_cache
+
 test: compile
-	./rebar -v --config "rebar.test.config" skip_deps=true ct
+	$(REBAR) ct
 
 benchmark:
 	${ERL} ${ERLARGS} +P 60000000 -eval "application:start(nitro_cache)" -eval "nitro_cache:benchmark(1000)"
@@ -33,4 +36,13 @@ benchmark:
 shell: compile
 	${ERL} ${ERLARGS}
 
-travis: test
+dialyzer: compile
+	$(REBAR) dialyzer
+
+travis: test dialyzer
+
+publish:
+	$(REBAR) as pkg upgrade
+	$(REBAR) as pkg hex publish
+	$(REBAR) upgrade
+

@@ -3,3 +3,5 @@
 .rebar
 ebin/
 *.beam
+_build/
+logs/

@@ -84,7 +84,7 @@ flush(CacheName, Key, Expiry) ->
 
 %% @dor Tries to lookup Key in the cache, and execute the given FunResult
 %% on a miss.
--spec get(atom(), infinity|pos_integer(), term(), function()) -> term().
+-spec get(atom(), infinity|integer(), term(), function()) -> term().
 get(CacheName, LifeTime, Key, FunResult) ->
     get(CacheName, LifeTime, Key, FunResult, 0).
 
