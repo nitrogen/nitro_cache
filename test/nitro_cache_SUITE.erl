@@ -119,10 +119,10 @@ harvester(0) ->
 harvester(Times) ->
     receive
         {result, {Num, Time, Result}} ->
-            io:format("Result Number ~p Received: ~p. Time: ~p~n", [Num, Result, Time]),
+            error_logger:info_msg("Result Number ~p Received: ~p. Time: ~p~n", [Num, Result, Time]),
             harvester(Times-1);
         {error, {Num, Error}} ->
-            io:format("ERROR RESULT RECEIVED: ~p~n",[Num]),
+            error_logger:error_msg("ERROR RESULT RECEIVED: ~p~nMsg: ~p",[Num, Error]),
             erlang:exit(Error)
     after 20000 ->
         {timeout, Times}
