@@ -23,7 +23,7 @@ getdeps:
 compile:
 	@${REBAR} compile
 
-test:
+test: compile
 	./rebar -v --config "rebar.test.config" skip_deps=true ct
 
 benchmark:
