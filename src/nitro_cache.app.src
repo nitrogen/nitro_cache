@@ -4,5 +4,8 @@
   {registered, []},
   {applications, [kernel, stdlib]},
   {env, []},
+  {links, [{"Github", "https://github.com/nitrogen/nitro_cache"}]},
+  {maintainers, ["Jesse Gumm"]},
+  {licenses, ["Apache"]},
   {mod, {nitro_cache_app, []}}
  ]}.
