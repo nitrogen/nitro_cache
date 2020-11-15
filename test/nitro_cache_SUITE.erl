@@ -83,7 +83,7 @@ timed_fast(Config) ->
 
 lots_of_keys(Config) ->
     Fun = fun() ->
-        Key = crypto:rand_uniform(1, 10000),
+        Key = rand:uniform(10000),
         Key = nitro_cache:get(?BUCKET, infinity, Key, fun() -> running_notice(), timer:sleep(1000), Key end)
     end,
     ok = run_times(Fun, config_to_num(Config), 1).
@@ -107,8 +107,8 @@ times_worker(Fun, Times, DelayPerRequest) ->
             {Time, Result} ->
                 Me ! {result, {Times, Time, Result}}
         catch
-            E:T ->
-                Me ! {error, {Times, {E,T, erlang:get_stacktrace()}}}
+            E:T:S ->
+                Me ! {error, {Times, {E,T,S}}}
         end
     end),
     timer:sleep(DelayPerRequest),
