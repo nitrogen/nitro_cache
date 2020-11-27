@@ -103,10 +103,16 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
       MutexName = {CacheName, Key},
       case simple_cache_mutex:lock(MutexName) of
           success ->
-              V = FunResult(),
-              set(CacheName, LifeTime, Key, V),
-              simple_cache_mutex:free(MutexName),
-              V;
+              try FunResult() of
+                  V ->
+                      set(CacheName, LifeTime, Key, V),
+                      simple_cache_mutex:free(MutexName),
+                      V
+              catch Type:Error:Stacktrace ->
+                  simple_cache_mutex:free(MutexName),
+                  error_logger:error_msg("Error processing function in simple_cache: ~p:~p~nStacktrace: ~p",[Type, Error, Stacktrace]),
+                  throw(caching_function_failed)
+              end;
           fail ->
               %% Since the mutex is not available, let's wait until it frees up, then try again.
               case simple_cache_mutex:wait(MutexName, 10000) of
