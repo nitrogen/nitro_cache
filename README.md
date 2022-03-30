@@ -35,6 +35,10 @@ a MISS will call the given **fun**, caching its result for **3600000** milliseco
 
 ## Changes:
 
+### Version 0.4.1
+
++ Fixed a bug where the mutex wouldn't free if the provided function crashed.
+
 ### Version 0.4.0
 
 + Renamed to NitroCache to avoid a name clash (simple_cache is already taken
