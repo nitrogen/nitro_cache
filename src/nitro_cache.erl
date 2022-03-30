@@ -103,17 +103,24 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
       MutexName = {CacheName, Key},
       case nitro_cache_mutex:lock(MutexName) of
           success ->
-              V = FunResult(),
-              set(CacheName, LifeTime, Key, V),
-              nitro_cache_mutex:free(MutexName),
-              V;
+              try
+                begin
+                    V = FunResult(),
+                    set(CacheName, LifeTime, Key, V),
+                    nitro_cache_mutex:free(MutexName),
+                    V
+                end
+              catch E:T:S ->
+                nitro_cache_mutex:free(MutexName),
+                error({E,T,S})
+              end;
           fail ->
               %% Since the mutex is not available, let's wait until it frees up, then try again.
               case nitro_cache_mutex:wait(MutexName, 10000) of
                 free ->
                     ok;
                 not_free ->
-                    error_logger:warning_msg("SimpleCache: Mutex \"~p\" timed out after 10 seconds. Something might be wrong. Trying again.", [MutexName])
+                    error_logger:warning_msg("NitroCache: Mutex \"~p\" timed out after 10 seconds. Something might be wrong. Trying again.", [MutexName])
               end,
               get(CacheName, LifeTime, Key, FunResult, TimesChecked+1)
        end;
