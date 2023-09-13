@@ -4,34 +4,43 @@ NitroCache is a fork of [simple_cache](https://github.com/marcelog/simple_cache)
 modified specifically for the needs of integration with the [Nitrogen Web
 Framework](http://nitrogenproject.com).
 
-
 The updated code now has a separate process to handle the expirations, which is
 a regular `gen_server`. To start it, just do:
 
-    nitro_cache_expirer:start_link()
+```erlang
+nitro_cache_expirer:start_link().
+```
 
 ## Create a cache
 
-    nitro_cache:init(my_cache_name).
+```erlang
+nitro_cache:init(my_cache_name).
+```
 
 ## Getting a key
 
 The following call will lookup **my_key** in the cache named **my_cache_name**, and on
 a MISS will call the given **fun**, caching its result for **3600000** milliseconds.
 
-    nitro_cache:get(my_cache_name, 3600000, my_key, fun() ->
-        io:format("This fun will be called on a cache miss~n"),
-        timer:sleep(5000)
-        this_value_will_be_cached
-    end)
+```erlang
+nitro_cache:get(my_cache_name, 3600000, my_key, fun() ->
+	io:format("This fun will be called on a cache miss~n"),
+	timer:sleep(5000)
+	this_value_will_be_cached
+end).
+```
 
 ## Flushing the cache
 
+```erlang
     nitro_cache:flush(my_cache_name).
+```
 
 ## Flushing a key
 
+```erlang
     nitro_cache:flush(my_cache_name, my_key).
+```
 
 ## Changes:
 
@@ -39,7 +48,10 @@ a MISS will call the given **fun**, caching its result for **3600000** milliseco
 
 + The mutex server has been pulled out of NitroCache and renamed to
   [Mutagen](https://github.com/nitrogen/mutagen).
-+ Fixed some stability bugs
+
+### Version 0.4.1
+
++ Fixed a bug where the mutex wouldn't free if the provided function crashed.
 
 ### Version 0.4.0
 
@@ -55,7 +67,9 @@ a MISS will call the given **fun**, caching its result for **3600000** milliseco
 + Added a `set/4` function.
 + Converted to rebar3
 
-### Version =< 0.3
+### Earlier Version Modifications from the [original](https://github.com/marcelog/simple_cache)
 
-These earlier versions are the simple_cache versions.
-
+* Requesting a key from a bucket if it has not yet been initialized will
+  automatically instantiate that bucket.
+* Added a `cache_exists/1` function.
+* Added a `set/4' function.
