@@ -5,7 +5,6 @@
   {applications, [kernel, stdlib, mutagen]},
   {env, []},
   {links, [{"Github", "https://github.com/nitrogen/nitro_cache"}]},
-  {maintainers, ["Jesse Gumm"]},
-  {licenses, ["Apache"]},
+  {licenses, ["Apache-2.0"]},
   {mod, {nitro_cache_app, []}}
  ]}.
