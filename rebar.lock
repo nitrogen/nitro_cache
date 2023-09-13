@@ -1,0 +1,8 @@
+{"1.2.0",
+[{<<"mutagen">>,{pkg,<<"mutagen">>,<<"0.1.0">>},0}]}.
+[
+{pkg_hash,[
+ {<<"mutagen">>, <<"18EFF9F0E6C570F278ABFC6255D4674D0FD3F9A84D3749BE60F473F4124A9055">>}]},
+{pkg_hash_ext,[
+ {<<"mutagen">>, <<"59F25DF87A6F99B605A96F2338983631A8186B5B28988739D6B880C2D86DF72E">>}]}
+].
