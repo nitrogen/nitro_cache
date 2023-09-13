@@ -5,3 +5,5 @@ ebin/
 *.beam
 _build/
 logs/
+rebar3
+_checkouts
