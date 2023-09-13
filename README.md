@@ -35,6 +35,12 @@ a MISS will call the given **fun**, caching its result for **3600000** milliseco
 
 ## Changes:
 
+### Version 0.5.0
+
++ The mutex server has been pulled out of NitroCache and renamed to
+  [Mutagen](https://github.com/nitrogen/mutagen).
++ Fixed some stability bugs
+
 ### Version 0.4.0
 
 + Renamed to NitroCache to avoid a name clash (simple_cache is already taken

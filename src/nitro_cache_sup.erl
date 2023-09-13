@@ -44,7 +44,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     {ok, {{one_for_one, 5, 10}, [
-        ?CHILD(nitro_cache_mutex, nitro_cache_mutex, worker, []),
         ?CHILD(nitro_cache_expirer, nitro_cache_expirer, worker, [])
     ]}}.
 

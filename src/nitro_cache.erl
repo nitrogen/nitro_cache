@@ -101,19 +101,19 @@ get(CacheName, LifeTime, Key, FunResult, TimesChecked) ->
   try ets:lookup(RealName, Key) of
     [] ->
       MutexName = {CacheName, Key},
-      case nitro_cache_mutex:lock(MutexName) of
+      case mutagen:lock(MutexName) of
           success ->
               V = FunResult(),
               set(CacheName, LifeTime, Key, V),
-              nitro_cache_mutex:free(MutexName),
+              mutagen:free(MutexName),
               V;
           fail ->
               %% Since the mutex is not available, let's wait until it frees up, then try again.
-              case nitro_cache_mutex:wait(MutexName, 10000) of
+              case mutagen:wait(MutexName, 10000) of
                 free ->
                     ok;
                 not_free ->
-                    error_logger:warning_msg("SimpleCache: Mutex \"~p\" timed out after 10 seconds. Something might be wrong. Trying again.", [MutexName])
+                    logger:warning("Nitro Cache: Mutex \"~p\" timed out after 10 seconds. Something might be wrong. Trying again.", [MutexName])
               end,
               get(CacheName, LifeTime, Key, FunResult, TimesChecked+1)
        end;
@@ -169,8 +169,8 @@ now_millis() ->
 
 benchmark(NumKeys) ->
     GenFun = fun() -> timer:sleep(1000), ok end,
-    io:format("Starting Simple Cache ~n"),
-    application:start(nitro_cache),
+    io:format("Starting Nitro Cache ~n"),
+    application:ensure_all_started(nitro_cache),
     io:format("Generating ~p Keys~n", [NumKeys]),
     Keys = lists:seq(1, NumKeys),
     MaxRequestTimes = 1000,

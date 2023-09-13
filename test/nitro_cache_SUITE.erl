@@ -42,7 +42,7 @@ groups() ->
 
 init_per_group(Test, Config) ->
     Num = test_to_num(Test),
-	application:start(nitro_cache),
+	application:ensure_all_started(nitro_cache),
 	[{num, Num} | Config].
 
 end_per_group(_Test, Config) ->
