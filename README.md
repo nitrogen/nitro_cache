@@ -72,4 +72,4 @@ end).
 * Requesting a key from a bucket if it has not yet been initialized will
   automatically instantiate that bucket.
 * Added a `cache_exists/1` function.
-* Added a `set/4' function.
+* Added a `set/4` function.
